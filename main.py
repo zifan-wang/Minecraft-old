@@ -1,5 +1,7 @@
 """
-V 0.2.5
+from zifan.site
+version 1.1.0
+python 3.x
 """
 import sys
 import random
@@ -16,19 +18,14 @@ TICKS_PER_SEC = 60
 
 SECTOR_SIZE = 16
 
+GAMETYPES = False # 是否开启冰雪世界
+
+SEED = random.randint(10, 1000000)#656795(种子"akioi") # 世界种子
+print('seed:', SEED)
+
 GTIME = 0 # 当前世界时间
-
-GDAY = 0.001
-GNIGHT = 0.002
-
-BIGHILLS = 1 # 大型山坡个数
-
-BIGHILLS1 = 4 # 中型山坡个数
-
-HILLS = 8 # 小型山坡个数
-
-SHILLS = 16 # 微型山坡个数
-
+GDAY = 0.0005
+GNIGHT = 0.0015
 
 WALKING_SPEED = 5 # 走路速度
 RUNNING_SPEED = 8 # 跑步速度
@@ -75,15 +72,23 @@ def tex_coords(top, bottom, side):
     result.extend(side * 4)
     return result
 
-GRASS = tex_coords((1, 0), (0, 1), (0, 0))
+if GAMETYPES:
+    GRASS = tex_coords((4, 0), (0, 1), (1, 3))
+else:
+    GRASS = tex_coords((1, 0), (0, 1), (0, 0))
 SAND = tex_coords((1, 1), (1, 1), (1, 1))
+DIRT = tex_coords((0, 1), (0, 1), (0, 1))
 STONE = tex_coords((2, 0), (2, 0), (2, 0))
 ENDSTONE = tex_coords((2, 1), (2, 1), (2, 1))
-WATER = tex_coords((3, 1), (3, 1), (3, 1))
+if GAMETYPES:
+    WATER = tex_coords((3, 1), (3, 1), (3, 1))
+else:
+    WATER = tex_coords((0, 4), (0, 4), (0, 4))
 WOOD = tex_coords((0, 2), (0, 2), (3, 0))
 LEAF = tex_coords((0, 3), (0, 3), (0, 3))
 BRICK = tex_coords((1, 2), (1, 2), (1, 2))
 PUMKEY = tex_coords((2, 2), (3, 3), (2, 3))
+MELON = tex_coords((2, 4), (2, 4), (1, 4))
 CLOUD = tex_coords((3, 2), (3, 2), (3, 2))
 TNT = tex_coords((4, 2), (4, 3), (4, 1))
 
@@ -96,6 +101,8 @@ FACES = [
     ( 0, 0, 1),
     ( 0, 0,-1),
 ]
+
+random.seed(SEED)
 
 
 def normalize(position):
@@ -111,6 +118,52 @@ def sectorize(position):
     return (x, 0, z)
 
 
+persistence = random.uniform(0.01,0.15)
+Number_Of_Octaves = random.randint(3,5)
+
+def Noise(x, y):
+    n = x + y * 57
+    n = (n * 8192) ^ n
+    return ( 1.0 - ( (n * (n * n * 15731 + 789221) + 1376312589) & 0x7fffffff) / 1073741824.0)
+
+def SmoothedNoise(x, y):
+    corners = ( Noise(x-1, y-1)+Noise(x+1, y-1)+Noise(x-1, y+1)+Noise(x+1, y+1) ) / 16
+    sides = ( Noise(x-1, y) +Noise(x+1, y) +Noise(x, y-1) +Noise(x, y+1) ) / 8
+    center = Noise(x, y) / 4
+    return corners + sides + center
+
+def Cosine_Interpolate(a, b, x):
+    ft = x * 3.1415927
+    f = (1 - math.cos(ft)) * 0.5
+    return a*(1-f) + b*f
+
+def Linear_Interpolate(a, b, x):
+    return a*(1-x) + b*x
+
+def InterpolatedNoise(x, y):
+    integer_X = int(x)
+    fractional_X = x - integer_X
+    integer_Y = int(y)
+    fractional_Y = y - integer_Y
+    v1 = SmoothedNoise(integer_X, integer_Y)
+    v2 = SmoothedNoise(integer_X + 1, integer_Y)
+    v3 = SmoothedNoise(integer_X, integer_Y + 1)
+    v4 = SmoothedNoise(integer_X + 1, integer_Y + 1)
+    i1 = Cosine_Interpolate(v1, v2, fractional_X)
+    i2 = Cosine_Interpolate(v3, v4, fractional_X)
+    return Cosine_Interpolate(i1, i2, fractional_Y)
+
+def PerlinNoise(x, y):
+    noise = 0
+    p = persistence
+    n = Number_Of_Octaves
+    for i in range(n):
+        frequency = pow(2,i)
+        amplitude = pow(p,i)
+        noise = noise + InterpolatedNoise(x * frequency, y * frequency) * amplitude
+    return noise
+
+
 class Model(object):
 
     def __init__(self):
@@ -122,197 +175,58 @@ class Model(object):
         self._shown = {} # 显示的纹理
         self.sectors = {}
         self.queue = deque()
-        self._initialize()
+        self.dfy = self._initialize()
 
     def tree(self, y, x, z):
         # 生成树
-        th = random.randint(4, 7)
-        ts = random.randint(2, 3)
+        th = random.randint(4, 6)
+        ts = random.randint(th // 2, 4)
         for i in range(y, y + th):
             self.add_block((x, i, z), WOOD, immediate=False)
-        for xx in range(x - ts, x + ts + 1):
-            for zz in range(z - ts, z + ts + 1):
-                for yy in range(y + th, y + th + th):
-                    if (yy == y+th or yy == y+th+th-1)and(xx == x-ts or xx == x+ts or zz == z-ts or zz == z+ts):
-                        continue
-                    self.add_block((xx, yy, zz), LEAF, immediate=False)
+        for dy in range(y + th, y + th + 2):
+            for dx in range(x - ts, x + ts + 1):
+                for dz in range(z - ts, z + ts + 1):
+                    self.add_block((dx, dy, dz), LEAF, immediate=False)
+        for dy in range(y + th + 2, y + th + ts + 2):
+            ts -= 1
+            for dx in range(x - ts, x + ts + 1):
+                for dz in range(z - ts, z + ts + 1):
+                    self.add_block((dx, dy, dz), LEAF, immediate=False)
 
     def _initialize(self):
         # 初始化世界
-        n = WORLDLEN
-        s = 1
-        y = 0
-        for x in range(-n, n + 1, s):
-            for z in range(-n, n + 1, s):
-                self.add_block((x, y - 2, z), WATER, immediate=False)
-                self.add_block((x, y - 3, z), WATER, immediate=False)
-                self.add_block((x, y - 4, z), WATER, immediate=False)
-                self.add_block((x, y - 5, z), WATER, immediate=False)
-                self.add_block((x, y - 6, z), random.choice([SAND, STONE]), immediate=False)
-                self.add_block((x, y - 7, z), ENDSTONE, immediate=False)
-                if x in (-n, n) or z in (-n, n):
-                    for dy in range(y - 6, 3):
-                        self.add_block((x, y + dy, z), ENDSTONE, immediate=False)
-        for x in range(-n, n + 1, 5):
-            for z in range(-n, n + 1, 5):
-                if random.randint(0,2)==1:
-                    for i in range(x,x+random.randint(3,5)):
-                        for j in range(z,z+random.randint(3,5)):
-                            self._show_block((i, 40, j), CLOUD)
-
-        d = 1
-        for _ in range(BIGHILLS):
-            a = random.randint(-n+51, n-51)
-            b = random.randint(-n+51, n-51)
-            c = -3
-            h = random.randint(2, 4)
-            s = random.randint(40, 50)
-            for y in range(c, c + h):
-                t = random.choice([SAND, STONE])
-                for x in range(a - s, a + s + 1):
-                    for z in range(b - s, b + s + 1):
-                        if (x - a) ** 2 + (z - b) ** 2 > (s + 1) ** 2:
-                            continue
-                        if (x - 0) ** 2 + (z - 0) ** 2 < 5 ** 2:
-                            continue
-                        self.add_block((x, y, z), t, immediate=False)
-                s -= d
-            c = h - 3
-            h = random.randint(8, 10)
-            for y in range(c, c + h):
-                for x in range(a - s, a + s + 1):
-                    for z in range(b - s, b + s + 1):
-                        if (x - a) ** 2 + (z - b) ** 2 > (s + 1) ** 2:
-                            continue
-                        if (x - 0) ** 2 + (z - 0) ** 2 < 5 ** 2:
-                            continue
-                        self.add_block((x, y, z), GRASS, immediate=False)
-                        if y == c + h - 1 and x % 3 == 0 and z % 3 ==0 and random.randint(0, 6) == 2:
-                            self.tree(y, x, z)
-                s -= d
-            c = c + h
-            for i in range(random.randint(4, 7)):
-                hh = random.randint(4, 6)
-                ss = random.randint(5, 8)
-                aa = random.randint(a-s+ss, a+s-ss)
-                bb = random.randint(b-s+ss, b+s-ss)
-                for y in range(c, c + hh):
-                    for x in range(aa - ss, aa + ss + 1):
-                        for z in range(bb - ss, bb + ss + 1):
-                            if (x - aa) ** 2 + (z - bb) ** 2 > (ss + 1) ** 2:
-                                if y == c + 1 and random.randint(0,1):
-                                    self.add_block((x, y, z), random.choice([GRASS, GRASS, STONE, GRASS, PUMKEY]), immediate=False)
-                                continue
-                            if (x - 0) ** 2 + (z - 0) ** 2 < 5 ** 2:
-                                if y == c + 1 and random.randint(0,1):
-                                    self.add_block((x, y, z), random.choice([GRASS, GRASS, STONE, GRASS, PUMKEY]), immediate=False)
-                                continue
-                            self.add_block((x, y, z), random.choice([GRASS, GRASS, STONE, GRASS, GRASS]), immediate=False)
-                            if y == c + hh - 1 and x % 3 == 0 and z % 3 ==0 and random.randint(0, 4) == 2:
-                                self.tree(y, x, z)
-                    ss -= d
-        for _ in range(BIGHILLS1):
-            a = random.randint(-n+29, n-29)
-            b = random.randint(-n+29, n-29)
-            c = -3
-            h = random.randint(2, 3)
-            s = random.randint(24, 28)
-            for y in range(c, c + h):
-                t = random.choice([SAND, STONE])
-                for x in range(a - s, a + s + 1):
-                    for z in range(b - s, b + s + 1):
-                        if (x - a) ** 2 + (z - b) ** 2 > (s + 1) ** 2:
-                            continue
-                        if (x - 0) ** 2 + (z - 0) ** 2 < 5 ** 2:
-                            continue
-                        self.add_block((x, y, z), t, immediate=False)
-                s -= d
-            c = h - 3
-            h = random.randint(4, 8)
-            for y in range(c, c + h):
-                for x in range(a - s, a + s + 1):
-                    for z in range(b - s, b + s + 1):
-                        if (x - a) ** 2 + (z - b) ** 2 > (s + 1) ** 2:
-                            continue
-                        if (x - 0) ** 2 + (z - 0) ** 2 < 5 ** 2:
-                            continue
-                        self.add_block((x, y, z), GRASS, immediate=False)
-                        if y == c + h - 1 and x % 3 == 0 and z % 3 ==0 and random.randint(0, 6) == 2:
-                            self.tree(y, x, z)
-                s -= d
-            c = h - 1
-            for i in range(random.randint(1, 3)):
-                aa = random.randint(a-s+5, a+s-5)
-                bb = random.randint(b-s+5, b+s-5)
-                hh = random.randint(4, 6)
-                ss = random.randint(4, 7)
-                for y in range(c, c + hh):
-                    for x in range(aa - ss, aa + ss + 1):
-                        for z in range(bb - ss, bb + ss + 1):
-                            if (x - aa) ** 2 + (z - bb) ** 2 > (ss + 1) ** 2:
-                                continue
-                            if (x - 0) ** 2 + (z - 0) ** 2 < 5 ** 2:
-                                continue
-                            self.add_block((x, y, z), GRASS, immediate=False)
-                            if y == c + hh - 1 and x % 3 == 0 and z % 3 ==0 and random.randint(0, 4) == 2:
-                                self.tree(y, x, z)
-                    ss -= d
-        for _ in range(HILLS):
-            a = random.randint(-n+17, n-17)
-            b = random.randint(-n+17, n-17)
-            c = -3
-            h = random.randint(2, 3)
-            s = random.randint(14, 16)
-            for y in range(c, c + h):
-                t = random.choice([SAND, STONE])
-                for x in range(a - s, a + s + 1):
-                    for z in range(b - s, b + s + 1):
-                        if (x - a) ** 2 + (z - b) ** 2 > (s + 1) ** 2:
-                            continue
-                        if (x - 0) ** 2 + (z - 0) ** 2 < 5 ** 2:
-                            continue
-                        self.add_block((x, y, z), t, immediate=False)
-                s -= d
-            c = h - 3
-            h = random.randint(4, 7)
-            for y in range(c, c + h):
-                for x in range(a - s, a + s + 1):
-                    for z in range(b - s, b + s + 1):
-                        if (x - a) ** 2 + (z - b) ** 2 > (s + 1) ** 2:
-                            continue
-                        if (x - 0) ** 2 + (z - 0) ** 2 < 5 ** 2:
-                            continue
-                        self.add_block((x, y, z), GRASS, immediate=False)
-                        if y == c + h - 1 and x % 3 == 0 and z % 3 ==0 and random.randint(0, 5) == 3:
-                            self.tree(y, x, z)
-                s -= d
-        for _ in range(SHILLS):
-            a = random.randint(-n+4, n-4)
-            b = random.randint(-n+4, n-4)
-            c = -2
-            h = random.randint(1, 3)
-            s = random.randint(7, 9)
-            for y in range(c, c + h):
-                t = random.choice([SAND, STONE])
-                for x in range(a - s, a + s + 1):
-                    for z in range(b - s, b + s + 1):
-                        if (x - a) ** 2 + (z - b) ** 2 > (s + 1) ** 2:
-                            continue
-                        if (x - 0) ** 2 + (z - 0) ** 2 < 5 ** 2:
-                            continue
-                        self.add_block((x, y, z), t, immediate=False)
-                s -= d
-            c = h - 2
-            h = random.randint(4, 7)
-            for y in range(c, c + h):
-                for x in range(a - s, a + s + 1):
-                    for z in range(b - s, b + s + 1):
-                        if (x - a) ** 2 + (z - b) ** 2 > (s + 1) ** 2:
-                            continue
-                        if (x - 0) ** 2 + (z - 0) ** 2 < 5 ** 2:
-                            continue
-                        self.add_block((x, y, z), GRASS, immediate=False)
-                s -= d
+        hl = WORLDLEN // 2
+        mn = 0
+        quality = 4
+        gmap = [[0 for x in range(0, WORLDLEN)]for z in range(0, WORLDLEN)]
+        for x in range(0, WORLDLEN):
+            for z in range(0, WORLDLEN):
+                gmap[x - hl][z - hl] += round(PerlinNoise(x / quality, z / quality) * quality)
+                mn = min(mn, gmap[x - hl][z - hl])
+        for x in range(-hl, hl):
+            for z in range(-hl, hl):
+                gmap[x][z] += abs(mn)
+                if gmap[x][z] < 2:
+                    self.add_block((x, -1, z), random.choice([SAND, STONE]))
+                    self.add_block((x, 0, z), WATER)
+                    self.add_block((x, 1, z), WATER)
+                else:
+                    for y in range(-1, gmap[x][z]):
+                        self.add_block((x, y, z), DIRT)
+                    self.add_block((x, gmap[x][z], z), GRASS)
+                self.add_block((x, -2, z), ENDSTONE)
+        for x in range(-hl, hl, 4):
+            for z in range(-hl, hl, 4):
+                if x == 0 and z == 0:
+                    continue
+                if random.randint(0, 3) == 1 and gmap[x][z] > 1:
+                    self.tree(gmap[x][z] + 1, x, z)
+                    for i in range(x, x + 4):
+                        for j in range(z, z + 4):
+                            self._show_block((i, 30, j), CLOUD)
+                elif random.randint(0, 4) == 2 and gmap[x][z] > 2:
+                    self.add_block((x, gmap[x][z] + 1, z), random.choice([PUMKEY, MELON]))
+        return gmap[0][0] + abs(mn) + 2
 
     def hit_test(self, position, vector, max_distance=8):
         m = 8
@@ -448,18 +362,18 @@ class Window(pyglet.window.Window):
         self.flying = False # 是否在飞行
         self.walking = True # 是否在走路
         self.jumping = False # 是否在跳
+        self.model = Model()
         self.strafe = [0, 0]
-        self.position = (0, 0, 0)
+        self.position = (0, self.model.dfy, 0)
         self.rotation = (0, 0)
         self.sector = None
         self.reticle = None
         self.dy = 0
-        self.inventory = [STONE, GRASS, SAND, WOOD, BRICK, PUMKEY, TNT]
+        self.inventory = [GRASS, DIRT, STONE, SAND, WOOD, BRICK, PUMKEY, MELON, TNT]
         self.block = self.inventory[0]
         self.num_keys = [
             key._1, key._2, key._3, key._4, key._5,
             key._6, key._7, key._8, key._9, key._0]
-        self.model = Model()
         self.label = pyglet.text.Label('', font_name='Arial', font_size=18,
             x=10, y=self.height - 10, anchor_x='left', anchor_y='top',
             color=(0, 0, 0, 255))
@@ -570,27 +484,62 @@ class Window(pyglet.window.Window):
                     break
         return tuple(p)
 
-    def TNTbom(self, x, y, z):
+    def TNTboom(self, x, y, z):
         # TNT爆炸
         self.model.remove_block((x, y, z))
-        s = 5
-        for i in range(x - s, x + s):
-            for j in range(y - s, y + s):
-                for k in range(z - s, z + s):
-                    if (i, j, k) in self.model.world:
-                        if j == y-s or j == y+s-1 or i == i-s or i == i+s-1 or k == z-s or k == z+s-1:
+        bf = 4
+        s = 0
+        for dy in range(y - bf, y):
+            for i in range(x - s, x + s):
+                for j in range(z - s, z + s):
+                    if (i, dy, j) in self.model.world:
+                        if j == z-s or j == z+s-1 or i == x-s or i == x+s-1:
                             if random.randint(0, 1):
-                                if self.model.world[(i, j, k)] == TNT:
-                                    self.TNTbom(i, j, k)
+                                if self.model.world[(i, dy, j)] == TNT:
+                                    self.TNTboom(i, dy, j)
                                     continue
-                                if self.model.world[(i, j, k)] != ENDSTONE:
-                                    self.model.remove_block((i, j, k))
+                                if self.model.world[(i, dy, j)] != ENDSTONE:
+                                    self.model.remove_block((i, dy, j))
                         else:
-                            if self.model.world[(i, j, k)] == TNT:
-                                self.TNTbom(i, j, k)
+                            if self.model.world[(i, dy, j)] == TNT:
+                                self.TNTboom(i, dy, j)
                                 continue
-                            if self.model.world[(i, j, k)] != ENDSTONE:
-                                self.model.remove_block((i, j, k))
+                            if self.model.world[(i, dy, j)] != ENDSTONE:
+                                self.model.remove_block((i, dy, j))
+            s += 1
+        s = bf
+        for i in range(x - s, x + s):
+            for j in range(z - s, z + s):
+                if (i, y, j) in self.model.world:
+                    if j == z-s or j == z+s-1 or i == x-s or i == x+s-1:
+                        if random.randint(0, 1):
+                            if self.model.world[(i, y, j)] == TNT:
+                                self.TNTboom(i, y, j)
+                                continue
+                            self.model.remove_block((i, y, j))
+                    else:
+                        if self.model.world[(i, y, j)] == TNT:
+                            self.TNTboom(i, y, j)
+                            continue
+                        self.model.remove_block((i, y, j))
+        for dy in range(y + 1, y + s + 1):
+            for i in range(x - s, x + s):
+                for j in range(z - s, z + s):
+                    if (i, dy, j) in self.model.world:
+                        if j == z-s or j == z+s-1 or i == x-s or i == x+s-1:
+                            if random.randint(0, 1):
+                                if self.model.world[(i, dy, j)] == TNT:
+                                    self.TNTboom(i, dy, j)
+                                    continue
+                                if self.model.world[(i, dy, j)] != ENDSTONE:
+                                    self.model.remove_block((i, dy, j))
+                        else:
+                            if self.model.world[(i, dy, j)] == TNT:
+                                self.TNTboom(i, dy, j)
+                                continue
+                            if self.model.world[(i, dy, j)] != ENDSTONE:
+                                self.model.remove_block((i, dy, j))
+            s -= 1
 
     def on_mouse_press(self, x, y, button, modifiers):
         if self.exclusive:
@@ -612,7 +561,7 @@ class Window(pyglet.window.Window):
                 # 鼠标左击
                 texture = self.model.world[block]
                 if texture == TNT:
-                    self.TNTbom(block[0], block[1], block[2])
+                    self.TNTboom(block[0], block[1], block[2])
                 elif texture != ENDSTONE:
                     self.model.remove_block(block)
         else:
@@ -747,6 +696,10 @@ def setup_fog():
     glFogf(GL_FOG_START, 30.0)
     glFogf(GL_FOG_END, 60.0)
     glLightfv(GL_LIGHT0, GL_POSITION, (GLfloat * 4)(0.0, 0.0, 0.0, 0.0))
+    setup_light()
+
+def setup_light():
+    # 初始化光照
     gamelight = 5.0 - GTIME / 10
     glLightfv(GL_LIGHT0, GL_AMBIENT, (GLfloat * 4)(gamelight, gamelight, gamelight, 1.0))
     glLightfv(GL_LIGHT0, GL_DIFFUSE, (GLfloat * 4)(gamelight, gamelight, gamelight, 1.0))
