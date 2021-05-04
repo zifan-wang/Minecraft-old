@@ -1,4 +1,4 @@
-#用Python做的简单Minecraft我的世界
+# 用Python做的简单Minecraft我的世界
 
 参考了https://github.com/fogleman/Minecraft
 
@@ -10,7 +10,7 @@ https://www.zhihu.com/zvideo/1354393587543732224
 
 https://zifan.site/down/files/13/
 
-##怎么运行
+## 怎么运行
 
 ```shell
 pip install pyglet
@@ -19,8 +19,8 @@ cd Minecraft
 python main.py
 ```
 
-##怎么玩
-###移动
+## 怎么玩
+### 移动
 - W: 向前走
 - A: 向左走
 - S: 向后走
@@ -29,7 +29,7 @@ python main.py
 - ESC/E：释放鼠标
 - Space: 跳跃
 - Tab: 改变模式(飞行或走路)
-###方块
+### 方块
 
 1. 草方块
 2. 土块
