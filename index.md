@@ -1,37 +1,45 @@
-## Welcome to GitHub Pages
+# 用Python做的简单Minecraft我的世界
 
-You can use the [editor on GitHub](https://github.com/zifan-wang/Minecraft/edit/gh-pages/index.md) to maintain and preview the content for your website in Markdown files.
+参考了https://github.com/fogleman/Minecraft
 
-Whenever you commit to this repository, GitHub Pages will run [Jekyll](https://jekyllrb.com/) to rebuild the pages in your site, from the content in your Markdown files.
+项目演示视频：
 
-### Markdown
+https://www.zhihu.com/zvideo/1354393587543732224
 
-Markdown is a lightweight and easy-to-use syntax for styling your writing. It includes conventions for
+从我的个人网站上下载：
 
-```markdown
-Syntax highlighted code block
+https://zifan.site/down/files/13/
 
-# Header 1
-## Header 2
-### Header 3
+## 怎么运行
 
-- Bulleted
-- List
-
-1. Numbered
-2. List
-
-**Bold** and _Italic_ and `Code` text
-
-[Link](url) and ![Image](src)
+```shell
+pip install pyglet
+git clone https://github.com/zifan-wang/Minecraft.git
+cd Minecraft
+python main.py
 ```
 
-For more details see [GitHub Flavored Markdown](https://guides.github.com/features/mastering-markdown/).
+## 怎么玩
+### 移动
+- W: 向前走
+- A: 向左走
+- S: 向后走
+- D: 向右走
+- R: 开启/关闭跑步模式
+- ESC/E：释放鼠标
+- Space: 跳跃
+- Tab: 改变模式(飞行或走路)
+### 方块
 
-### Jekyll Themes
+1. 草方块
+2. 土块
+3. 石头
+4. 沙子
+5. 木头
+6. 砖头
+7. 南瓜
+8. 西瓜
+9. TNT
 
-Your Pages site will use the layout and styles from the Jekyll theme you have selected in your [repository settings](https://github.com/zifan-wang/Minecraft/settings/pages). The name of this theme is saved in the Jekyll `_config.yml` configuration file.
-
-### Support or Contact
-
-Having trouble with Pages? Check out our [documentation](https://docs.github.com/categories/github-pages-basics/) or [contact support](https://support.github.com/contact) and we’ll help you sort it out.
+左击挖掉方块，右击放置方块
+鼠标对着TNT左击即可爆炸
