@@ -1,14 +1,14 @@
 # 用Python做的简单Minecraft我的世界
 
-参考了https://github.com/fogleman/Minecraft
+参考了[https://github.com/fogleman/Minecraft](https://github.com/fogleman/Minecraft)
 
 项目演示视频：
 
-https://www.zhihu.com/zvideo/1354393587543732224
+[https://www.zhihu.com/zvideo/1354393587543732224](https://www.zhihu.com/zvideo/1354393587543732224)
 
 从我的个人网站上下载：
 
-https://zifan.site/down/files/13/
+[https://zifan.site/down/files/13/](https://zifan.site/down/files/13/)
 
 ## 怎么运行
 
