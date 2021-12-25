@@ -1,6 +1,6 @@
 # 用Python做的简单Minecraft我的世界
 
-参考了https://github.com/fogleman/Minecraft
+基于https://github.com/fogleman/Minecraft
 
 项目演示视频：
 
