@@ -12,6 +12,8 @@ https://zifan.site/down/files/13/
 
 本程序严禁商用，使用Apache许可证，在issue提出授权。
 
+视频性行为属于商业盈利行为。
+
 ## 怎么运行
 
 ```shell
