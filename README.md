@@ -10,6 +10,8 @@ https://www.zhihu.com/zvideo/1354393587543732224
 
 https://zifan.site/down/files/13/
 
+本程序严禁商用，使用Apache许可证，在issue提出授权。
+
 ## 怎么运行
 
 ```shell
